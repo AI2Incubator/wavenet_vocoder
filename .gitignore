@@ -196,3 +196,6 @@ Temporary Items
 
 # Linux trash folder which might appear on any partition or disk
 .Trash-*
+
+*.wav
+LJSpeech-1.1/**
