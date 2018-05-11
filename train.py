@@ -614,7 +614,7 @@ def __train_step(device, phase, epoch, global_step, global_test_step,
 
     # Learning rate schedule
     current_lr = hparams.initial_learning_rate
-    if train and hparams.lr_schedule is not None:
+    if train and hparams.lr_schedule is not None and hparams.lr_schedule:
         lr_schedule_f = getattr(lrschedule, hparams.lr_schedule)
         current_lr = lr_schedule_f(
             hparams.initial_learning_rate, step, **hparams.lr_schedule_kwargs)
