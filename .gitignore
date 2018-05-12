@@ -199,3 +199,4 @@ Temporary Items
 
 *.wav
 LJSpeech-1.1/**
+*.pth
