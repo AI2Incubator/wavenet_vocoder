@@ -504,9 +504,9 @@ def eval_model(global_step, writer, device, model, y, c, g, input_lengths, eval_
 
     # Dummy silence
     if is_mulaw_quantize(hparams.input_type):
-        initial_value = P.mulaw_quantize(0, hparams.quantize_channels)
+        initial_value = P.mulaw_quantize(0, hparams.quantize_channels - 1)
     elif is_mulaw(hparams.input_type):
-        initial_value = P.mulaw(0.0, hparams.quantize_channels)
+        initial_value = P.mulaw(0.0, hparams.quantize_channels - 1)
     else:
         initial_value = 0.0
     print("Intial value:", initial_value)
@@ -529,11 +529,11 @@ def eval_model(global_step, writer, device, model, y, c, g, input_lengths, eval_
 
     if is_mulaw_quantize(hparams.input_type):
         y_hat = y_hat.max(1)[1].view(-1).long().cpu().data.numpy()
-        y_hat = P.inv_mulaw_quantize(y_hat, hparams.quantize_channels)
-        y_target = P.inv_mulaw_quantize(y_target, hparams.quantize_channels)
+        y_hat = P.inv_mulaw_quantize(y_hat, hparams.quantize_channels - 1)
+        y_target = P.inv_mulaw_quantize(y_target, hparams.quantize_channels - 1)
     elif is_mulaw(hparams.input_type):
-        y_hat = P.inv_mulaw(y_hat.view(-1).cpu().data.numpy(), hparams.quantize_channels)
-        y_target = P.inv_mulaw(y_target, hparams.quantize_channels)
+        y_hat = P.inv_mulaw(y_hat.view(-1).cpu().data.numpy(), hparams.quantize_channels - 1)
+        y_target = P.inv_mulaw(y_target, hparams.quantize_channels - 1)
     else:
         y_hat = y_hat.view(-1).cpu().data.numpy()
 
