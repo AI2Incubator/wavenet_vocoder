@@ -124,9 +124,9 @@ if __name__ == "__main__":
         # save
         librosa.output.write_wav(dst_wav_path, waveform, sr=hparams.sample_rate)
         if is_mulaw_quantize(hparams.input_type):
-            x = P.inv_mulaw_quantize(x, hparams.quantize_channels)
+            x = P.inv_mulaw_quantize(x, hparams.quantize_channels - 1)
         elif is_mulaw(hparams.input_type):
-            x = P.inv_mulaw(x, hparams.quantize_channels)
+            x = P.inv_mulaw(x, hparams.quantize_channels - 1)
         librosa.output.write_wav(target_wav_path, x, sr=hparams.sample_rate)
 
         # log

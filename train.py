@@ -566,8 +566,8 @@ def save_states(global_step, writer, y_hat, y, input_lengths, checkpoint_dir=Non
         y_hat = y_hat[idx].data.cpu().long().numpy()
         y = y[idx].view(-1).data.cpu().long().numpy()
 
-        y_hat = P.inv_mulaw_quantize(y_hat, hparams.quantize_channels)
-        y = P.inv_mulaw_quantize(y, hparams.quantize_channels)
+        y_hat = P.inv_mulaw_quantize(y_hat, hparams.quantize_channels - 1)
+        y = P.inv_mulaw_quantize(y, hparams.quantize_channels - 1)
     else:
         # (B, T)
         y_hat = sample_from_discretized_mix_logistic(
@@ -577,8 +577,8 @@ def save_states(global_step, writer, y_hat, y, input_lengths, checkpoint_dir=Non
         y = y[idx].view(-1).data.cpu().numpy()
 
         if is_mulaw(hparams.input_type):
-            y_hat = P.inv_mulaw(y_hat, hparams.quantize_channels)
-            y = P.inv_mulaw(y, hparams.quantize_channels)
+            y_hat = P.inv_mulaw(y_hat, hparams.quantize_channels - 1)
+            y = P.inv_mulaw(y, hparams.quantize_channels - 1)
 
     # Mask by length
     y_hat[length:] = 0
