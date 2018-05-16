@@ -101,7 +101,7 @@ def wavegen(model, length=None, c=None, g=None, initial_value=None,
 
     if initial_value is None:
         if is_mulaw_quantize(hparams.input_type):
-            initial_value = P.mulaw_quantize(0, hparams.quantize_channels)
+            initial_value = P.mulaw_quantize(0, hparams.quantize_channels - 1)
         else:
             initial_value = 0.0
 
@@ -128,9 +128,9 @@ def wavegen(model, length=None, c=None, g=None, initial_value=None,
 
     if is_mulaw_quantize(hparams.input_type):
         y_hat = y_hat.max(1)[1].view(-1).long().cpu().data.numpy()
-        y_hat = P.inv_mulaw_quantize(y_hat, hparams.quantize_channels)
+        y_hat = P.inv_mulaw_quantize(y_hat, hparams.quantize_channels - 1)
     elif is_mulaw(hparams.input_type):
-        y_hat = P.inv_mulaw(y_hat.view(-1).cpu().data.numpy(), hparams.quantize_channels)
+        y_hat = P.inv_mulaw(y_hat.view(-1).cpu().data.numpy(), hparams.quantize_channels - 1)
     else:
         y_hat = y_hat.view(-1).cpu().data.numpy()
 
