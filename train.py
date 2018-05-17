@@ -59,7 +59,6 @@ from wavenet_vocoder.mixture import sample_from_discretized_mix_logistic
 import audio
 from hparams import hparams, hparams_debug_string
 
-fs = hparams.sample_rate
 
 global_step = 0
 global_test_step = 0
@@ -341,13 +340,14 @@ def ensure_divisible(length, divisible_by=256, lower=True):
     if length % divisible_by == 0:
         return length
     if lower:
+        assert length % divisible_by == 0, "Length %d not divisable by %d" % (length, divisible_by)
         return length - length % divisible_by
     else:
         return length + (divisible_by - length % divisible_by)
 
 
 def assert_ready_for_upsampling(x, c):
-    assert len(x) % len(c) == 0 and len(x) // len(c) == audio.get_hop_size()
+    assert len(x) % len(c) == 0 and len(x) / len(c) == audio.get_hop_size()
 
 
 def collate_fn(batch):
@@ -355,8 +355,8 @@ def collate_fn(batch):
 
     Args:
         batch(tuple): List of tuples
-            - x[0] (ndarray,int) : list of (T,)
-            - x[1] (ndarray,int) : list of (T, D)
+            - x[0] (ndarray,int) : list of (T,), Audio
+            - x[1] (ndarray,int) : list of (T, D), Mel
             - x[2] (ndarray,int) : list of (1,), speaker id
     Returns:
         tuple: Tuple of batch
@@ -378,7 +378,7 @@ def collate_fn(batch):
     if local_conditioning:
         new_batch = []
         for idx in range(len(batch)):
-            x, c, g = batch[idx]
+            x, c, g = batch[idx] # Audio, Mel, Spaker ID
             if hparams.upsample_conditional_features:
                 assert_ready_for_upsampling(x, c)
                 if max_time_steps is not None:
@@ -420,6 +420,7 @@ def collate_fn(batch):
     # (B, T, C)
     # pad for time-axis
     if is_mulaw_quantize(hparams.input_type):
+        # Output softmax with one hot encoding
         x_batch = np.array([_pad_2d(np_utils.to_categorical(
             x[0], num_classes=hparams.quantize_channels),
             max_input_len) for x in batch], dtype=np.float32)
@@ -430,6 +431,7 @@ def collate_fn(batch):
 
     # (B, T)
     if is_mulaw_quantize(hparams.input_type):
+        # Input for teacher forcing
         y_batch = np.array([_pad(x[0], max_input_len) for x in batch], dtype=np.int)
     else:
         y_batch = np.array([_pad(x[0], max_input_len) for x in batch], dtype=np.float32)
@@ -437,6 +439,7 @@ def collate_fn(batch):
 
     # (B, T, D)
     if local_conditioning:
+        # Mel-spectrogram batch
         max_len = max([len(x[1]) for x in batch])
         c_batch = np.array([_pad_2d(x[1], max_len) for x in batch], dtype=np.float32)
         assert len(c_batch.shape) == 3
@@ -458,6 +461,7 @@ def collate_fn(batch):
     else:
         y_batch = torch.FloatTensor(y_batch).unsqueeze(-1).contiguous()
 
+    # Lengths of audio being inputed
     input_lengths = torch.LongTensor(input_lengths)
 
     return x_batch, y_batch, c_batch, g_batch, input_lengths
@@ -484,8 +488,8 @@ def eval_model(global_step, writer, device, model, y, c, g, input_lengths, eval_
     if ema is not None:
         print("Using averaged model for evaluation")
         model = clone_as_averaged_model(device, model, ema)
-        model.make_generation_fast_()
 
+    model.make_generation_fast_()
     model.eval()
     idx = np.random.randint(0, len(y))
     length = input_lengths[idx].data.cpu().item()
@@ -494,7 +498,7 @@ def eval_model(global_step, writer, device, model, y, c, g, input_lengths, eval_
     y_target = y[idx].view(-1).data.cpu().numpy()[:length]
 
     if c is not None:
-        c = c[idx, :, :length].unsqueeze(0)
+        c = c[idx, :, :int(length / audio.get_hop_size())].unsqueeze(0)
         assert c.dim() == 3
         print("Shape of local conditioning features: {}".format(c.size()))
     if g is not None:
@@ -503,6 +507,7 @@ def eval_model(global_step, writer, device, model, y, c, g, input_lengths, eval_
         print("Shape of global conditioning features: {}".format(g.size()))
 
     # Dummy silence
+    # BUG: Not all scripts start with silence...
     if is_mulaw_quantize(hparams.input_type):
         initial_value = P.mulaw_quantize(0, hparams.quantize_channels - 1)
     elif is_mulaw(hparams.input_type):
@@ -599,9 +604,9 @@ def __train_step(device, phase, epoch, global_step, global_test_step,
                  checkpoint_dir, eval_dir=None, do_eval=False, ema=None):
     sanity_check(model, c, g)
 
-    # x : (B, C, T)
-    # y : (B, T, 1)
-    # c : (B, C, T)
+    # x : (B, C, T) One hot audio
+    # y : (B, T, 1) Audio (Batch, Audio Size)
+    # c : (B, C, T) Mel (Batch, Channels, Frames)
     # g : (B,)
     train = (phase == "train")
     clip_thresh = hparams.clip_thresh
@@ -698,6 +703,7 @@ def train_loop(device, model, data_loaders, optimizer, writer, checkpoint_dir=No
             train = (phase == "train")
             running_loss = 0.
             test_evaluated = False
+            # Audio One Hot Batch, Audio Input, Mel Batch, global conditioning batch, Audio lengths
             for step, (x, y, c, g, input_lengths) in tqdm(enumerate(data_loader)):
                 # Whether to save eval (i.e., online decoding) result
                 do_eval = False
@@ -928,6 +934,8 @@ if __name__ == "__main__":
     hparams.parse(args["--hparams"])
     assert hparams.name == "wavenet_vocoder"
     print(hparams_debug_string())
+
+    fs = hparams.sample_rate
 
     os.makedirs(checkpoint_dir, exist_ok=True)
 

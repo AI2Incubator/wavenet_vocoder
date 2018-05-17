@@ -90,20 +90,29 @@ def wavegen(model, length=None, c=None, g=None, initial_value=None,
         Tc = c.shape[0]
         upsample_factor = audio.get_hop_size()
         # Overwrite length according to feature size
-        length = Tc * upsample_factor
+        if length is None:
+            length = Tc * upsample_factor
+        else:
+            num_frames = int(length // upsample_factor) 
+            length = num_frames * upsample_factor
+            c = c[:num_frames]
+            
         # (Tc, D) -> (Tc', D)
         # Repeat features before feeding it to the network
         if not hparams.upsample_conditional_features:
+            print('Repeating Features...')
             c = np.repeat(c, upsample_factor, axis=0)
 
         # B x C x T
         c = torch.FloatTensor(c.T).unsqueeze(0)
+        print('Conditional Features:', c.shape)
 
     if initial_value is None:
         if is_mulaw_quantize(hparams.input_type):
             initial_value = P.mulaw_quantize(0, hparams.quantize_channels - 1)
         else:
             initial_value = 0.0
+    print('Initial Value:', initial_value)
 
     if is_mulaw_quantize(hparams.input_type):
         assert initial_value >= 0 and initial_value < hparams.quantize_channels
@@ -123,7 +132,7 @@ def wavegen(model, length=None, c=None, g=None, initial_value=None,
 
     with torch.no_grad():
         y_hat = model.incremental_forward(
-            initial_input, c=c, g=g, T=length, tqdm=tqdm, softmax=True, quantize=True,
+            initial_input, c=c, g=g, T=length, softmax=True, quantize=True, tqdm=tqdm,
             log_scale_min=hparams.log_scale_min)
 
     if is_mulaw_quantize(hparams.input_type):
