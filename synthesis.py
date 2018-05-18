@@ -152,7 +152,10 @@ if __name__ == "__main__":
     checkpoint_path = args["<checkpoint>"]
     dst_dir = args["<dst_dir>"]
 
-    length = int(args["--length"])
+    if args["--length"] is not None:
+        length = int(args["--length"])
+    else:
+        length = None
     initial_value = args["--initial-value"]
     initial_value = None if initial_value is None else float(initial_value)
     conditional_path = args["--conditional"]
