@@ -7,7 +7,7 @@ usage: synthesis.py [options] <checkpoint> <dst_dir>
 options:
     --hparams=<parmas>                Hyper parameters [default: ].
     --preset=<json>                   Path of preset parameters (json).
-    --length=<T>                      Steps to generate [default: ].
+    --length=<T>                      Steps to generate.
     --initial-value=<n>               Initial value for the WaveNet decoder.
     --conditional=<p>                 Conditional features path.
     --symmetric-mels                  Symmetric mel.
